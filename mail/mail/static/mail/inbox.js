@@ -6,9 +6,11 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelector('#archived').addEventListener('click', () => load_mailbox('archive'));
   document.querySelector('#compose').addEventListener('click', compose_email);
 
+  console.log("attemping default load of mailbox")
   // By default, load the inbox
   load_mailbox('inbox');
-});
+  console.log("passed through default load of mailbox")
+  });
 
 function compose_email() {
 
@@ -23,7 +25,7 @@ function compose_email() {
   document.querySelector('#compose-body').value = '';
 
   // on form submit call
-  document.querySelector('#compose-form').onsubmit = () => {
+  document.querySelector('#compose-email').onsubmit = () => {
     
     // Saves email content in form into an object to pass into sendEmail function
     const email = {
@@ -34,13 +36,185 @@ function compose_email() {
 
     sendEmail(email)
 
-    // Prevents form automatically submitting
+    // Prevents form from submitting automatically 
     return false;
   };
 }
 
-function load_email(id) {
-  fetch('/emails/' + id)
+
+function sendEmail(email) {
+  // Post email to API route
+    fetch('/emails' , {
+      method: 'POST',
+      body: JSON.stringify({
+        recipients: email.recipients,
+        subject: email.subject,
+        body: email.body
+      })
+    })
+    .then(response => response.json())
+    .then(result => {
+      // If successful, load user's sent inbox
+      if (!result.error) {
+        load_mailbox('sent')
+      } 
+      else {
+        document.querySelector('#compose-result').innerHTML = result.error;
+        document.querySelector('#compose-result').style.display = 'block';
+      }
+    })
+    .catch(error => {
+      console.error(error);
+    })
+}
+  
+function load_mailbox(mailbox) {
+  
+  // Show the mailbox and hide other views
+  document.querySelector('#emails-view').style.display = 'block';
+  document.querySelector('#compose-view').style.display = 'none';
+  document.querySelector('#email-view').style.display = 'none';
+
+  // Show the mailbox name
+  const emailview = document.querySelector('#emails-view');
+  emailview.innerHTML = `<h3>${mailbox.charAt(0).toUpperCase() + mailbox.slice(1)}</h3>`;
+
+  fetch('/emails/' + mailbox)
+  .then(response => response.json())
+  .then(emails => {
+  // update HTML if there are no emails
+  
+
+    // generate div for each email
+    emails.forEach(email => {
+        
+      const emaildiv = document.createElement('div');
+      emaildiv.className = email['read'] ? "email-list-item-read" : "email-list-item-unread";
+      emaildiv.innerHTML = `
+        <span class="sender col-3"> <b>${email['sender']}</b> </span>
+        <span class="subject col-6"> ${email['subject']} </span>
+        <span class="timestamp col-3"> ${email['timestamp']} </span>
+      `;
+
+      if (emails.length === 0) {
+        const noResults = document.createElement('div');
+        noResults.innerHTML = "You have 0 messages.";
+        document.getElementById("emails-view").appendChild(noResults);
+      }
+
+      // Make unread emails bold
+      if (mailbox === "inbox" && email.read == false) {
+        emaildiv.classList.add('font-weight-bold');
+      }
+      // Read emails in Inbox turn to grey
+      if (mailbox === "inbox" && email.read == true) {
+        emaildiv.style.backgroundColor = '#f1f2f3';
+      } 
+
+      // Calls OpenEmail function when email is clicked
+      emaildiv.addEventListener('click', function () {
+        open_email(email, mailbox);
+      },)
+
+      // Adds email HTML to the mailbox webpage
+      document.getElementById("emails-view").appendChild(emaildiv);
+
+  });
+})
+}
+
+// function load_mailbox(mailbox) {
+  
+//   // Show the mailbox and hide other views
+//   document.querySelector('#emails-view').style.display = 'block';
+//   document.querySelector('#compose-view').style.display = 'none';
+//   document.querySelector('#email-view').style.display = 'none';
+
+//   // Show the mailbox name
+//   const emailview = document.querySelector('#emails-view');
+//   emailview.innerHTML = `<h3>${mailbox.charAt(0).toUpperCase() + mailbox.slice(1)}</h3>`;
+
+//   // retrieve emails
+//   retrieveEmails(mailbox);
+
+// }
+
+// async function retrieveEmails(mailbox) {
+  
+//   // retrieves email json data
+//   const emails = await emailAPICall(mailbox);
+
+//   // update HTML if there are no emails
+//   if (emails.length === 0) {
+//     const noResults = document.createElement('div');
+//     noResults.innerHTML = "You have 0 messages.";
+//     document.getElementById("emails-view").appendChild(noResults);
+//   }
+
+//   // generate div for each email
+//   emails.forEach(email => {
+      
+//     const emaildiv = document.createElement('div');
+//     emaildiv.className = email['read'] ? "email-list-item-read" : "email-list-item-unread";
+//     emaildiv.innerHTML = `
+//       <span class="sender col-3"> <b>${email['sender']}</b> </span>
+//       <span class="subject col-6"> ${email['subject']} </span>
+//       <span class="timestamp col-3"> ${email['timestamp']} </span>
+//     `;
+
+//     // Make unread emails bold
+//     if (mailbox === "inbox" && email.read == false) {
+//       emaildiv.classList.add('font-weight-bold');
+//     }
+//     // Read emails in Inbox turn to grey
+//     if (mailbox === "inbox" && email.read == true) {
+//       emaildiv.style.backgroundColor = '#f1f2f3';
+//     } 
+
+//     // Calls OpenEmail function when email is clicked
+//     emaildiv.addEventListener('click', function () {
+//       open_email(email, mailbox);
+//     },)
+
+//     // Adds email HTML to the mailbox webpage
+//     document.getElementById("emails-view").appendChild(emaildiv);
+
+// });
+
+// }
+
+// Fetches email JSON data for given mailbox
+// async function emailAPICall(mailbox) {
+//   const response = await fetch(`/emails/${mailbox}`);
+//   const emailData = await response.json();
+//   return emailData;
+// }
+
+function open_email(email, mailbox) {
+  // Mark as read if unread
+  if (!email.read) {
+    read_email(email)
+  }
+  // Gets email HTML
+  // id = email['id']
+  load_email(email)
+}
+
+// Marks email as read
+function read_email(email) {
+  fetch(`/emails/${email.id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      read: true
+    })
+  });
+}
+
+  
+
+
+function load_email(email) {
+  fetch('/emails/' + email['id'])
   .then(response => response.json())
   .then(email => {
 
@@ -87,7 +261,7 @@ function load_email(id) {
     view.appendChild(reply);
 
     // create archive button & append to DOM
-    archiveButton = document.createElement('button');
+    const archiveButton = document.createElement('button');
     archiveButton.className = "btn-primary m-1";
     archiveButton.innerHTML = !email['archived'] ? 'Archive' : 'Unarchive';
     archiveButton.addEventListener('click', function() {
@@ -100,7 +274,7 @@ function load_email(id) {
     view.appendChild(archiveButton);
 
     // create mark as unread button & append to DOM
-    readButton = document.createElement('button');
+    const readButton = document.createElement('button');
     readButton.className = "btn-secondary m-1";
     readButton.innerHTML = "Mark as Unread"
     readButton.addEventListener('click', function() {
@@ -122,75 +296,6 @@ function load_email(id) {
   });
 }
 
-function load_mailbox(mailbox) {
+
   
-  // Show the mailbox and hide other views
-  document.querySelector('#emails-view').style.display = 'block';
-  document.querySelector('#compose-view').style.display = 'none';
-  document.querySelector('#email-view').style.display = 'none';
 
-  // Show the mailbox name
-  const emailview = document.querySelector('#emails-view');
-  emailview.innerHTML = `<h3>${mailbox.charAt(0).toUpperCase() + mailbox.slice(1)}</h3>`;
-
-  fetch('/emails/' + mailbox)
-  .then(response => response.json())
-  .then(emails => {
-
-    // generate div for each email
-    emails.forEach(email => {
-        const emaildiv = document.createElement('div');
-        div.className = email['read'] ? "email-list-item-read" : "email-list-item-unread";
-        emaildiv.innerHTML = `
-          <span class="sender col-3"> <b>${email['sender']}</b> </span>
-          <span class="subject col-6"> ${email['subject']} </span>
-          <span class="timestamp col-3"> ${email['timestamp']} </span>
-        `;
-
-        // Make unread emails bold
-        if (mailbox === "inbox" && email.read == false) {
-          emaildiv.classList.add('font-weight-bold');
-        }
-
-        // Adds email HTML to the mailbox webpage
-        document.getElementById("emails-view").appendChild(emaildiv);
-
-        // // Adds event listener for each email to call openEmail function when clicked
-        // emailDiv.addEventListener('click', function () {
-        //   openEmail(email, mailbox);
-        // },)
-
-
-        // add listener and append to DOM
-        div.addEventListener('click', () => load_email(email['id']));
-        emailview.appendChild(div);
-    });
-  })
-}
-
-
-function sendEmail(email) {
-// Post email to API route
-  fetch('/emails' , {
-    method: 'POST',
-    body: JSON.stringify({
-      recipients: email.recipients,
-      subject: email.subject,
-      body: email.body
-    })
-  })
-  .then(response => response.json())
-  .then(result => {
-    // If successful, load user's sent inbox
-    if (!result.error) {
-      load_mailbox('sent')
-    } 
-    else {
-      document.querySelector('#compose-result').innerHTML = result.error;
-      document.querySelector('#compose-result').style.display = 'block';
-    }
-  })
-  .catch(error => {
-    console.error(error);
-  })
-}
