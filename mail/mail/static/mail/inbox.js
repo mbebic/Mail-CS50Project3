@@ -24,17 +24,21 @@ function compose_email() {
   document.querySelector('#compose-subject').value = '';
   document.querySelector('#compose-body').value = '';
 
+  // Remove any validation messages
+  document.querySelector('#compose-error').innerHTML = '';
+  document.querySelector('#compose-error').style.display = 'none';
+
   // on form submit call
   document.querySelector('#compose-email').onsubmit = () => {
     
-    // Saves email content in form into an object to pass into sendEmail function
+    // Saves email content in form into an object to pass into send_email function
     const email = {
       recipients: document.querySelector('#compose-recipients').value,
       subject: document.querySelector('#compose-subject').value,
       body: document.querySelector('#compose-body').value
     };
 
-    sendEmail(email)
+    send_email(email)
 
     // Prevents form from submitting automatically 
     return false;
@@ -42,7 +46,7 @@ function compose_email() {
 }
 
 
-function sendEmail(email) {
+function send_email(email) {
   // Post email to API route
     fetch('/emails' , {
       method: 'POST',
@@ -54,13 +58,15 @@ function sendEmail(email) {
     })
     .then(response => response.json())
     .then(result => {
+      console.log("result is:")
+      console.log(result)
       // If successful, load user's sent inbox
       if (!result.error) {
         load_mailbox('sent')
       } 
       else {
-        document.querySelector('#compose-result').innerHTML = result.error;
-        document.querySelector('#compose-result').style.display = 'block';
+        document.querySelector('#compose-error').innerHTML = result.error;
+        document.querySelector('#compose-error').style.display = 'block';
       }
     })
     .catch(error => {
@@ -84,23 +90,22 @@ function load_mailbox(mailbox) {
   .then(emails => {
   // update HTML if there are no emails
   
-
+    let temp = emails;
+    if (temp.length == 0) {
+      const noEmails = document.createElement('div');
+      noEmails.innerHTML = "You have no messages.";
+      document.getElementById("emails-view").appendChild(noEmails);
+    }
     // generate div for each email
     emails.forEach(email => {
         
       const emaildiv = document.createElement('div');
-      emaildiv.className = email['read'] ? "email-list-item-read" : "email-list-item-unread";
+      emaildiv.className = 'card';
       emaildiv.innerHTML = `
-        <span class="sender col-3"> <b>${email['sender']}</b> </span>
-        <span class="subject col-6"> ${email['subject']} </span>
-        <span class="timestamp col-3"> ${email['timestamp']} </span>
+      <p class="sender col-6 mt-2"> From: ${email['sender']}</p>
+      <p class="subject col-6"> Subject: ${email['subject']}</p>
+      <p class="timestamp col-3"> ${email['timestamp']}</p>
       `;
-
-      if (emails.length === 0) {
-        const noResults = document.createElement('div');
-        noResults.innerHTML = "You have 0 messages.";
-        document.getElementById("emails-view").appendChild(noResults);
-      }
 
       // Make unread emails bold
       if (mailbox === "inbox" && email.read == false) {
@@ -123,80 +128,11 @@ function load_mailbox(mailbox) {
 })
 }
 
-// function load_mailbox(mailbox) {
-  
-//   // Show the mailbox and hide other views
-//   document.querySelector('#emails-view').style.display = 'block';
-//   document.querySelector('#compose-view').style.display = 'none';
-//   document.querySelector('#email-view').style.display = 'none';
-
-//   // Show the mailbox name
-//   const emailview = document.querySelector('#emails-view');
-//   emailview.innerHTML = `<h3>${mailbox.charAt(0).toUpperCase() + mailbox.slice(1)}</h3>`;
-
-//   // retrieve emails
-//   retrieveEmails(mailbox);
-
-// }
-
-// async function retrieveEmails(mailbox) {
-  
-//   // retrieves email json data
-//   const emails = await emailAPICall(mailbox);
-
-//   // update HTML if there are no emails
-//   if (emails.length === 0) {
-//     const noResults = document.createElement('div');
-//     noResults.innerHTML = "You have 0 messages.";
-//     document.getElementById("emails-view").appendChild(noResults);
-//   }
-
-//   // generate div for each email
-//   emails.forEach(email => {
-      
-//     const emaildiv = document.createElement('div');
-//     emaildiv.className = email['read'] ? "email-list-item-read" : "email-list-item-unread";
-//     emaildiv.innerHTML = `
-//       <span class="sender col-3"> <b>${email['sender']}</b> </span>
-//       <span class="subject col-6"> ${email['subject']} </span>
-//       <span class="timestamp col-3"> ${email['timestamp']} </span>
-//     `;
-
-//     // Make unread emails bold
-//     if (mailbox === "inbox" && email.read == false) {
-//       emaildiv.classList.add('font-weight-bold');
-//     }
-//     // Read emails in Inbox turn to grey
-//     if (mailbox === "inbox" && email.read == true) {
-//       emaildiv.style.backgroundColor = '#f1f2f3';
-//     } 
-
-//     // Calls OpenEmail function when email is clicked
-//     emaildiv.addEventListener('click', function () {
-//       open_email(email, mailbox);
-//     },)
-
-//     // Adds email HTML to the mailbox webpage
-//     document.getElementById("emails-view").appendChild(emaildiv);
-
-// });
-
-// }
-
-// Fetches email JSON data for given mailbox
-// async function emailAPICall(mailbox) {
-//   const response = await fetch(`/emails/${mailbox}`);
-//   const emailData = await response.json();
-//   return emailData;
-// }
-
-function open_email(email, mailbox) {
+function open_email(email) {
   // Mark as read if unread
   if (!email.read) {
     read_email(email)
   }
-  // Gets email HTML
-  // id = email['id']
   load_email(email)
 }
 
@@ -209,8 +145,7 @@ function read_email(email) {
     })
   });
 }
-
-  
+ 
 
 
 function load_email(email) {
@@ -225,19 +160,28 @@ function load_email(email) {
 
     // display email
     const view = document.querySelector('#email-view');
+
     view.innerHTML = `
-      <ul class="list-group">
-        <li class="list-group-item"><b>From:</b> <span>${email['sender']}</span></li>
-        <li class="list-group-item"><b>To: </b><span>${email['recipients']}</span></li>
-        <li class="list-group-item"><b>Subject:</b> <span>${email['subject']}</span</li>
-        <li class="list-group-item"><b>Time:</b> <span>${email['timestamp']}</span></li>
-      </ul>
-      <p class="m-2">${email['body']}</p>
-    `;
+    <div class="d-flex justify-content-between flex-wrap">
+    <h5 class="text-wrap">${email['subject']}</h5>
+    <small class="align-self-center text-muted text-right"><em>${email['timestamp']}</em></small>
+    </div>
+
+    <div class="d-flex justify-content-between py-3 pt-md-2 border-bottom flex-wrap">
+      <div>
+        <p>From: <b> ${email.sender}</b><br>
+        <p>To: <b> ${email.recipients}</b><br>
+      </div>
+    </div>
+
+    <div class="pt-1" style="white-space: pre-line">
+      ${email['body']}
+    </div>
+  `;
 
     // create reply button & append to DOMContentLoaded
     const reply = document.createElement('button');
-    reply.className = "btn-primary m-1";
+    reply.className = "btn btn-primary btn-outline mt-2 mr-2";
     reply.innerHTML = "Reply";
     reply.addEventListener('click', function() {
       compose_email();
@@ -262,7 +206,7 @@ function load_email(email) {
 
     // create archive button & append to DOM
     const archiveButton = document.createElement('button');
-    archiveButton.className = "btn-primary m-1";
+    archiveButton.className = "btn btn-primary btn-outline mt-2 mr-2";
     archiveButton.innerHTML = !email['archived'] ? 'Archive' : 'Unarchive';
     archiveButton.addEventListener('click', function() {
       fetch('/emails/' + email['id'], {
@@ -275,7 +219,7 @@ function load_email(email) {
 
     // create mark as unread button & append to DOM
     const readButton = document.createElement('button');
-    readButton.className = "btn-secondary m-1";
+    readButton.className = "btn btn-outline-dark mt-2 mr-2";
     readButton.innerHTML = "Mark as Unread"
     readButton.addEventListener('click', function() {
       fetch('/emails/' + email['id'], {
