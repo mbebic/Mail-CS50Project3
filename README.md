@@ -1,6 +1,9 @@
 # Mail-CS50Project3
 Project 3 for Harvard's CS50 Web Programming Course with Python and Javascript
 
+## YouTube Video Link
+https://youtu.be/GU5B43tIbWA
+
 ## Project Specifications
 Using JavaScript, HTML, and CSS, complete the implementation of your single-page-app email client inside of inbox.js
 
