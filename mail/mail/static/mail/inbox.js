@@ -19,7 +19,7 @@ function compose_email() {
   document.querySelector('#email-view').style.display = 'none';
   document.querySelector('#compose-view').style.display = 'block';
 
-  // Clear out composition fields
+  // Clear out fields
   document.querySelector('#compose-recipients').value = '';
   document.querySelector('#compose-subject').value = '';
   document.querySelector('#compose-body').value = '';
@@ -88,7 +88,6 @@ function load_mailbox(mailbox) {
   fetch('/emails/' + mailbox)
   .then(response => response.json())
   .then(emails => {
-  // update HTML if there are no emails
   
     let temp = emails;
     if (temp.length == 0) {
@@ -101,19 +100,36 @@ function load_mailbox(mailbox) {
         
       const emaildiv = document.createElement('div');
       emaildiv.className = 'card';
-      emaildiv.innerHTML = `
-      <p class="sender col-6 mt-2"> From: ${email['sender']}</p>
-      <p class="subject col-6"> Subject: ${email['subject']}</p>
-      <p class="timestamp col-3"> ${email['timestamp']}</p>
-      `;
+
+      if (mailbox === 'inbox') {
+        emaildiv.innerHTML = `
+        <p class="sender col-6 mt-2"> From: ${email['sender']}</p>
+        <p class="subject col-6"> Subject: ${email['subject']}</p>
+        <p class="timestamp col-3"> ${email['timestamp']}</p>
+        `;
+      }
+      if (mailbox === 'sent') {
+        emaildiv.innerHTML = `
+        <p class="sender col-6 mt-2"> To: ${email['recipients']}</p>
+        <p class="subject col-6"> Subject: ${email['subject']}</p>
+        <p class="timestamp col-3"> ${email['timestamp']}</p>
+        `;
+      }
+      if (mailbox === 'archive') {
+        emaildiv.innerHTML = `
+        <p class="sender col-6 mt-2"> From: ${email['sender']}</p>
+        <p class="subject col-6"> Subject: ${email['subject']}</p>
+        <p class="timestamp col-3"> ${email['timestamp']}</p>
+        `;
+      }
 
       // Make unread emails bold
       if (mailbox === "inbox" && email.read == false) {
         emaildiv.classList.add('font-weight-bold');
       }
-      // Read emails in Inbox turn to grey
+      // makes read emails in Inbox turn to grey
       if (mailbox === "inbox" && email.read == true) {
-        emaildiv.style.backgroundColor = '#f1f2f3';
+        emaildiv.style.backgroundColor = '#f0f0f0';
       } 
 
       // Calls OpenEmail function when email is clicked
@@ -129,14 +145,13 @@ function load_mailbox(mailbox) {
 }
 
 function open_email(email) {
-  // Mark as read if unread
+  // Mark email as read if unread
   if (!email.read) {
     read_email(email)
   }
   load_email(email)
 }
 
-// Marks email as read
 function read_email(email) {
   fetch(`/emails/${email.id}`, {
     method: 'PUT',
@@ -145,8 +160,6 @@ function read_email(email) {
     })
   });
 }
- 
-
 
 function load_email(email) {
   fetch('/emails/' + email['id'])
@@ -169,8 +182,8 @@ function load_email(email) {
 
     <div class="d-flex justify-content-between py-3 pt-md-2 border-bottom flex-wrap">
       <div>
-        <p>From: <b> ${email.sender}</b><br>
-        <p>To: <b> ${email.recipients}</b><br>
+        <p>From: <b> ${email['sender']}</b><br>
+        <p>To: <b> ${email['recipients']}</b><br>
       </div>
     </div>
 
@@ -206,9 +219,11 @@ function load_email(email) {
 
     // create archive button & append to DOM
     const archiveButton = document.createElement('button');
+    archiveButton.type = 'button';
     archiveButton.className = "btn btn-primary btn-outline mt-2 mr-2";
     archiveButton.innerHTML = !email['archived'] ? 'Archive' : 'Unarchive';
     archiveButton.addEventListener('click', function() {
+      console.log('inside archive button funct')
       fetch('/emails/' + email['id'], {
         method: 'PUT',
         body: JSON.stringify({ archived : !email['archived'] })
@@ -230,7 +245,7 @@ function load_email(email) {
     })
     view.appendChild(readButton);
 
-    // mark this email as read
+    // mark email as read
     if (!email['read']) {
       fetch('/emails/' + email['id'], {
         method: 'PUT',
@@ -239,7 +254,3 @@ function load_email(email) {
     }
   });
 }
-
-
-  
-
