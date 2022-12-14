@@ -1,6 +1,7 @@
 # Mail-CS50Project3
 Project 3 for Harvard's CS50 Web Programming Course with Python and Javascript
 
+## Project Specifications
 Using JavaScript, HTML, and CSS, complete the implementation of your single-page-app email client inside of inbox.js
 
 Send Mail: When a user submits the email composition form, add JavaScript code to actually send the email.
